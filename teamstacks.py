@@ -1,6 +1,5 @@
-#!/usr/bin/env python
 from __future__ import print_function
-from re import search, finditer, DOTALL, MULTILINE
+from re import search, match, finditer, DOTALL, MULTILINE
 from copy import copy
 from sys import version_info
 if version_info.major >= 3:
@@ -19,7 +18,7 @@ if not swb.logged_in():
     swb.login()
 
 r = swb.get('http://steamcommunity.com/my/friends/players')
-if re.match('http://steamcommunity.com/id/[^/]+/friends/$', r.url):
+if match('http://steamcommunity.com/id/[^/]+/friends/$', r.url):
     raise Exception('Not in game.')
 
 players = []
@@ -52,8 +51,14 @@ while i < len(groups):
             j += 1
     i += 1
 
-for group in sorted(groups, key=lambda s: -len(s)):
-    names = []
-    for player in group:
-        names.append(HTMLParser().unescape(playerNames[player]))
-    print(names)
+if len(groups) == len(players):
+    print('No groups in this game.')
+else:
+    print('Groups in this game:')
+    for group in groups:
+        if len(group) == 1:
+            continue
+        out = 'Group of size '+str(len(group))+': '
+        for player in group:
+            out += '"'+HTMLParser().unescape(playerNames[player]).decode('utf-8')+'", '
+        print(out[:-2])
