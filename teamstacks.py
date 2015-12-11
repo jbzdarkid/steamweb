@@ -13,52 +13,55 @@ def get_friends(swb, id):
     r = swb.get('http://steamcommunity.com/{id}/friends'.format(id=id))
     return [friend.group(1) for friend in finditer('<a class="friendBlockLinkOverlay" href="http://steamcommunity.com/(.*?)"></a>', r.content)]
 
-swb = SteamWebBrowserCfg()
-if not swb.logged_in():
-    swb.login()
-
-r = swb.get('http://steamcommunity.com/my/friends/players')
-if match('http://steamcommunity.com/id/[^/]+/friends/$', r.url):
-    raise Exception('Not in game.')
-
-players = []
-playerNames = {}
-for player in finditer('<a class="friendBlockLinkOverlay" href="http://steamcommunity.com/(.*?)".*?<div>(.*?)<br />', r.content, MULTILINE | DOTALL):
+def get_concurrent_players(swb):
+    r = swb.get('http://steamcommunity.com/my/friends/players')
+    if match('http://steamcommunity.com/id/[^/]+/friends/$', r.url):
+        raise Exception('Not in game.')
+    players = []
+    playerNames = {}
+    for player in finditer('<a class="friendBlockLinkOverlay" href="http://steamcommunity.com/(.*?)".*?<div>(.*?)<br />', r.content, MULTILINE | DOTALL):
+        players.append(player.group(1))
+        playerNames[player.group(1)] = player.group(2).strip()
+    # The player who called the program
+    player = search('<a href="http://steamcommunity.com/(.*?)" data-miniprofile="\d*">(.*?)</a>', r.content)
     players.append(player.group(1))
-    playerNames[player.group(1)] = player.group(2).strip()
-# The player who called the program
-player = search('<a href="http://steamcommunity.com/(.*?)" data-miniprofile="\d*">(.*?)</a>', r.content)
-players.append(player.group(1))
-playerNames[player.group(1)] = player.group(2)
+    playerNames[player.group(1)] = player.group(2)
+    return players, playerNames
 
-groups = []
-for player in players:
-    group = set([player])
-    for friend in get_friends(swb, player):
-        if friend in players:
-            group.add(friend)
-    groups.append(group)
+if __name__ == "__main__":
+    swb = SteamWebBrowserCfg()
+    if not swb.logged_in():
+        swb.login()
+    players, playerNames = get_concurrent_players(swb)
 
-i = 0
-while i < len(groups):
-    for player in copy(groups[i]):
-        j = 0
-        while j < i:
-            if player in groups[j]:
-                groups[i].update(groups[j])
-                del groups[j]
-                i -= 1
-            j += 1
-    i += 1
+    groups = []
+    for player in players:
+        group = set([player])
+        for friend in get_friends(swb, player):
+            if friend in players:
+                group.add(friend)
+        groups.append(group)
 
-if len(groups) == len(players):
-    print('No groups in this game.')
-else:
-    print('Groups in this game:')
-    for group in groups:
-        if len(group) == 1:
-            continue
-        out = 'Group of size '+str(len(group))+': '
-        for player in group:
-            out += '"'+HTMLParser().unescape(playerNames[player]).decode('utf-8')+'", '
-        print(out[:-2])
+    i = 0
+    while i < len(groups):
+        for player in copy(groups[i]):
+            j = 0
+            while j < i:
+                if player in groups[j]:
+                    groups[i].update(groups[j])
+                    del groups[j]
+                    i -= 1
+                j += 1
+        i += 1
+
+    if len(groups) == len(players):
+        print('No groups in this game.')
+    else:
+        print('Groups in this game:')
+        for group in groups:
+            if len(group) == 1:
+                continue
+            out = 'Group of size '+str(len(group))+': '
+            for player in group:
+                out += '"'+HTMLParser().unescape(playerNames[player]).decode('utf-8')+'", '
+            print(out[:-2])
