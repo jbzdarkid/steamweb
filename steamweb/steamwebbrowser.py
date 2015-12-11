@@ -115,14 +115,14 @@ class SteamWebBrowser(object):
         c = self._get_cookie('oauth_access_token', 'steamwebbrowser.tld')
         if c:
             return c.value
-        raise KeyError('oauth_access_token is not set')
+        raise AttributeError('oauth_access_token is not set')
 
     @property
     def steamid(self):
         c = self._get_cookie('steamid', 'steamwebbrowser.tld')
         if c:
             return c.value
-        raise KeyError('steamid is not set')
+        raise AttributeError('steamid is not set')
 
     @property
     def logger(self):
@@ -280,8 +280,8 @@ class SteamWebBrowser(object):
 
     def logged_in(self):
         try:
-            _ = self.oauth_access_token
-        except KeyError:
+            getattr(self, 'oauth_access_token')
+        except AttributeError:
             self.logger.debug('No access token stored')
             return False
         # Use session directly as self.get() will trigger login if not logged in
@@ -371,7 +371,8 @@ class SteamWebBrowser(object):
         self.session.cookies.set_cookie(c)
         self._save_cookies()
 
-    def login(self, captchagid='-1', captcha_text='', emailauth='', emailsteamid='', loginfriendlyname='', twofactorcode=''): # pylint:disable=too-many-arguments
+    def login(self, captchagid='-1', captcha_text='', emailauth='', emailsteamid='', 
+                loginfriendlyname='', twofactorcode=''): # pylint:disable=too-many-arguments
         self.logger.info('login calles with: captchagid="%s", captcha_text="%s", emailauth="%s",'
                         ' emailsteamid="%s", loginfriendlyname="%s", twofactorcode="%s"',
                         captchagid, captcha_text, emailauth, emailsteamid, loginfriendlyname,
@@ -509,11 +510,11 @@ class SteamWebBrowserCfg(SteamWebBrowser):
     def oauth_access_token(self):
         if self.cfg.has_option('steamweb', 'oauth_access_token'):
             return self.cfg.get('steamweb', 'oauth_access_token')
-        raise KeyError('oauth_access_token is not set')
+        raise AttributeError('oauth_access_token is not set')
 
     @property
     def steamid(self):
         if self.cfg.has_option('steamweb', 'steamid'):
             return self.cfg.get('steamweb', 'steamid')
-        raise KeyError('steamid is not set')
+        raise AttributeError('steamid is not set')
 
