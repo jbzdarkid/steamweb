@@ -83,11 +83,21 @@ if __name__ == "__main__":
             continue
 
         badges = get_badges(swb, player)
-        xp = badges['Years of Service']['xp']
-        date = badges['Years of Service']['date']
-        # 50 xp per year of service. The icons are unique as well, but hashed.
-        date = date.replace(year=date.year - xp/50)
-        print('Account created:', datetime.strftime(date, FORMAT))
+        if 'Years of Service' in badges:
+            xp = badges['Years of Service']['xp']
+            date = badges['Years of Service']['date']
+            # 50 xp per year of service. The icons are unique as well, but hashed.
+            date = date.replace(year=date.year - xp/50)
+            print('Account created:', datetime.strftime(date, FORMAT))
+        else:
+            today = datetime.today()
+            oldest_date = today
+            for badge in badges:
+                if badges[badge]['date'] < oldest_date:
+                    oldest_date = badges[badge]['date']
+            print('Account created between {lastyear} and {oldestbadge}'.format(
+                lastyear = datetime.strftime(today.replace(year=today.year-1), FORMAT),
+                oldestbadge = datetime.strftime(oldest_date, FORMAT)))
 
         profile_info = get_profile_info(swb, player)
         for key in sorted(profile_info.keys()):
