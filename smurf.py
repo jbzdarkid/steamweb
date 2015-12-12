@@ -51,7 +51,8 @@ def get_game_playtimes(swb, player):
 
 def get_badges(swb, player):
     r = swb.get('http://steamcommunity.com/%s/badges/' % player)
-    images = loads(search('g_rgDelayedLoadImages=(.*?);', r.content).group(1))
+    if 'g_rgDelayedLoadImages' in r.content:
+        images = loads(search('g_rgDelayedLoadImages=(.*?);', r.content).group(1))
     badges = {}
     for m in finditer('<div class="badge_info_image">\s*<img src="http://steamcommunity-a.akamaihd.net/public/shared/images/trans.gif" id="delayedimage_(.*?)_0">\s*</div>\s*<div class="badge_info_description">\s*<div class="badge_info_title">(.*?)</div>\s*<div>(\s*Level \d+,|)\s*(\d+) XP\s*</div>\s*<div class="badge_info_unlocked">\s*Unlocked (.*?)\s*</div>', r.content):
         name = m.group(2)
