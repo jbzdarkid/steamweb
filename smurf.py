@@ -1,3 +1,4 @@
+# TODO: Time in current game
 from __future__ import print_function
 from datetime import datetime
 from json import loads
@@ -42,6 +43,9 @@ def get_profile_info(swb, player):
     data['Steam Level'] = int(search('<span class="friendPlayerLevelNum">(\d*)</span>', r.content).group(1))
     for m in finditer('<span class="count_link_label">([\w ]*)</span>\s*&nbsp;\s*<span class="profile_count_link_total">\s*(\d*)\s*</span>', r.content):
         data[m.group(1)] = int(m.group(2))
+    m = search('<div class="profile_ban">\s*(\d*) VAC ban\(s\) on record\s*<span class="profile_ban_info">\| <a class="whiteLink" href="http://steamcommunity.com/actions/WhatIsVAC">Info</a></span>\s*</div>\s*(\d*) day\(s\) since last ban\s*</div>', r.content)
+    if m:
+        data['Vac Ban'] = {'Count': int(m.group(1)), 'Days': int(m.group(2))}
     return data
 
 def get_game_playtimes(swb, player):
@@ -96,18 +100,31 @@ if __name__ == "__main__":
     swb = SteamWebBrowserCfg()
     if not swb.logged_in():
         swb.login()
-    # players = ['id/jbzdarkid', 'id/User_Username', 'id/bklaw']
-    # playerNames = {'id/jbzdarkid': '1', 'id/User_Username': '2', 'id/bklaw': '3'}
-    players, playerNames = get_concurrent_players(swb)
+    players = ['profiles/76561197965527747']
+    playerNames = {'profiles/76561197965527747': '1'}
+    # players, playerNames = get_concurrent_players(swb)
 
     for player in players:
         print('\n\tPlayer %s:' %playerNames[player])
-        r = swb.get('http://steamcommunity.com/%s' % player)
-        if 'private_profile' in r.content:
+
+        profile_info = get_profile_info(swb, player)
+        count = profile_info['Vac Ban']['Count']
+        ord = str(count)+' times'
+        if count == 1:
+            ord = 'once'
+        elif count == 2:
+            ord = 'twice'
+        if 'Vac Ban' in profile_info:
+            print('VAC Banned {ord}: {time} ago'.format(
+            ord = ord,
+            time = format_time(profile_info['Vac Ban']['Days']*24)))
+        if 'Private' in profile_info:
             print('Has a private profile.')
             continue
 
         badges = get_badges(swb, player)
+        games = get_game_playtimes(swb, player)
+
         date = today
         if 'Years of Service' in badges:
             xp = badges['Years of Service']['xp']
@@ -121,13 +138,11 @@ if __name__ == "__main__":
         date = today-date
         print('Account age:', format_time(date.days * 24 + date.seconds / 3600.0))
 
-        profile_info = get_profile_info(swb, player)
-        for key in ['Friends', 'Games', 'Steam Level']:
-            print('%s:%s%s' % (key, ' '*(13-len(key)), profile_info[key]))
-
-        games = get_game_playtimes(swb, player)
         total_hours = 0.0
         for game in games:
             if 'hours_forever' in game:
                 total_hours += float(game['hours_forever'].replace(',', ''))
         print('Total time in games:', format_time(total_hours))
+
+        for key in ['Friends', 'Games', 'Steam Level']:
+            print('%s:%s%s' % (key, ' '*(13-len(key)), profile_info[key]))
