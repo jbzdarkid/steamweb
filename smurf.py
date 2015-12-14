@@ -6,8 +6,9 @@ from re import search, finditer
 from sys import version_info
 from teamstacks import get_concurrent_players
 
-FORMAT = '%b %d, %Y @ %I:%M%p' #May 18, 2013 @ 12:32pm
+FORMAT1 = '%b %d, %Y @ %I:%M%p' #May 18, 2013 @ 12:32pm
 FORMAT2 = '%b %d @ %I:%M%p' #May 18 @ 12:32pm
+today = datetime.today()
 
 if version_info.major >= 3:
     from html.parser import HTMLParser
@@ -31,7 +32,7 @@ def get_player_achievements(swb, game, player):
         try:
             achtime = datetime.strptime(achtime, FORMAT)
         except ValueError:
-            achtime = datetime.strptime(achtime, FORMAT2).replace(year=datetime.today().year)
+            achtime = datetime.strptime(achtime, FORMAT2).replace(year=today.year)
         achievements[m.group(2)] = {'date': achtime, 'desc': m.group(3)}
     return achievements
 
@@ -63,68 +64,70 @@ def get_badges(swb, player):
         badges[name]['xp'] = int(m.group(4))
         date = m.group(5)
         try:
-            date = datetime.strptime(date, FORMAT)
+            date = datetime.strptime(date, FORMAT1)
         except ValueError:
-            date = datetime.strptime(date, FORMAT2).replace(year=datetime.today().year)
+            date = datetime.strptime(date, FORMAT2).replace(year=today.year)
         badges[name]['date'] = date
     return badges
 
 if __name__ == "__main__":
+    def format_time(hours):
+        minutes = int(round((hours - floor(hours))*60))
+        hours = int(floor(hours))
+        time_spent = ''
+        if hours > 8760:
+            time_spent += str(hours/8760)+' year%s, ' % ('' if hours/8760 == 1 else 's')
+            hours %= 8760
+        if hours > 720:
+            time_spent += str(hours/720)+' month%s, ' % ('' if hours/720 == 1 else 's')
+            hours %= 720
+        if hours > 168:
+            time_spent += str(hours/168)+' week%s, ' % ('' if hours/168 == 1 else 's')
+            hours %= 168
+        if hours > 24:
+            time_spent += str(hours/24)+' day%s, ' % ('' if hours/24 == 1 else 's')
+            hours %= 24
+        if hours > 1:
+            time_spent += str(hours)+' hour%s, ' % ('' if hours == 1 else 's')
+        if minutes > 0:
+            time_spent += str(minutes)+' minute%s, ' % ('' if minutes == 1 else 's')
+        return time_spent[:-2]
+
     swb = SteamWebBrowserCfg()
     if not swb.logged_in():
         swb.login()
+    # players = ['id/jbzdarkid', 'id/User_Username', 'id/bklaw']
+    # playerNames = {'id/jbzdarkid': '1', 'id/User_Username': '2', 'id/bklaw': '3'}
     players, playerNames = get_concurrent_players(swb)
 
     for player in players:
-        print('\tPlayer %s:' %playerNames[player])
+        print('\n\tPlayer %s:' %playerNames[player])
         r = swb.get('http://steamcommunity.com/%s' % player)
         if 'private_profile' in r.content:
             print('Has a private profile.')
             continue
 
         badges = get_badges(swb, player)
+        date = today
         if 'Years of Service' in badges:
             xp = badges['Years of Service']['xp']
             date = badges['Years of Service']['date']
             # 50 xp per year of service. The icons are unique as well, but hashed.
             date = date.replace(year=date.year - xp/50)
-            print('Account created:', datetime.strftime(date, FORMAT))
         else:
-            today = datetime.today()
-            oldest_date = today
             for badge in badges:
-                if badges[badge]['date'] < oldest_date:
-                    oldest_date = badges[badge]['date']
-            print('Account created between {lastyear} and {oldestbadge}'.format(
-                lastyear = datetime.strftime(today.replace(year=today.year-1), FORMAT),
-                oldestbadge = datetime.strftime(oldest_date, FORMAT)))
+                if badges[badge]['date'] < date:
+                    date = badges[badge]['date']
+        date = today-date
+        print('Account age:', format_time(date.days * 24 + date.seconds / 3600.0))
 
         profile_info = get_profile_info(swb, player)
-        for key in sorted(profile_info.keys()):
-            print('%s:%s%s' % (key, ' '*(16-len(key)), profile_info[key]))
+        for key in ['Friends', 'Games', 'Steam Level']:
+            print('%s:%s%s' % (key, ' '*(13-len(key)), profile_info[key]))
 
         games = get_game_playtimes(swb, player)
         total_hours = 0.0
         for game in games:
             if 'hours_forever' in game:
                 total_hours += float(game['hours_forever'].replace(',', ''))
-        minutes = int(round((total_hours - floor(total_hours))*60))
-        total_hours = int(floor(total_hours))
-        time_spent = 'Total time spent in games: '
-        if total_hours > 8760:
-            time_spent += str(total_hours/8760)+' year%s, ' % ('' if total_hours/8760 == 1 else 's')
-            total_hours %= 8760
-        if total_hours > 720:
-            time_spent += str(total_hours/720)+' month%s, ' % ('' if total_hours/720 == 1 else 's')
-            total_hours %= 720
-        if total_hours > 168:
-            time_spent += str(total_hours/168)+' week%s, ' % ('' if total_hours/168 == 1 else 's')
-            total_hours %= 168
-        if total_hours > 24:
-            time_spent += str(total_hours/24)+' day%s, ' % ('' if total_hours/24 == 1 else 's')
-            total_hours %= 24
-        if total_hours > 1:
-            time_spent += str(total_hours)+' hour%s, ' % ('' if total_hours == 1 else 's')
-        if minutes > 0:
-            time_spent += str(minutes)+' minute%s, ' % ('' if minutes == 1 else 's')
-        print(time_spent[:-2])
+        print('Total time in games:', format_time(total_hours))
