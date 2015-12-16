@@ -31,7 +31,7 @@ def get_player_achievements(swb, game, player):
     for m in finditer('<div class="achieveUnlockTime">\s*Unlocked ([\w\d ,@:]*)<br/>\s*</div>\s*<h3 class="ellipsis">([\w ]*)</h3>\s*<h5>([\w ]*)</h5>', r.content):
         achtime = m.group(1)
         try:
-            achtime = datetime.strptime(achtime, FORMAT)
+            achtime = datetime.strptime(achtime, FORMAT1)
         except ValueError:
             achtime = datetime.strptime(achtime, FORMAT2).replace(year=today.year)
         achievements[m.group(2)] = {'date': achtime, 'desc': m.group(3)}
@@ -40,9 +40,11 @@ def get_player_achievements(swb, game, player):
 def get_profile_info(swb, player):
     r = swb.get('http://steamcommunity.com/%s' % player)
     data = {}
-    data['Steam Level'] = int(search('<span class="friendPlayerLevelNum">(\d*)</span>', r.content).group(1))
-    for m in finditer('<span class="count_link_label">([\w ]*)</span>\s*&nbsp;\s*<span class="profile_count_link_total">\s*(\d*)\s*</span>', r.content):
-        data[m.group(1)] = int(m.group(2))
+    data['Private'] = 'private_profile' in r.content
+    if not data['Private']:
+        data['Steam Level'] = int(search('<span class="friendPlayerLevelNum">(\d*)</span>', r.content).group(1))
+        for m in finditer('<span class="count_link_label">([\w ]*)</span>\s*&nbsp;\s*<span class="profile_count_link_total">\s*(\d*)\s*</span>', r.content):
+            data[m.group(1)] = int(m.group(2))
     m = search('<div class="profile_ban">\s*(\d*) VAC ban\(s\) on record\s*<span class="profile_ban_info">\| <a class="whiteLink" href="http://steamcommunity.com/actions/WhatIsVAC">Info</a></span>\s*</div>\s*(\d*) day\(s\) since last ban\s*</div>', r.content)
     if m:
         data['Vac Ban'] = {'Count': int(m.group(1)), 'Days': int(m.group(2))}
@@ -100,25 +102,23 @@ if __name__ == "__main__":
     swb = SteamWebBrowserCfg()
     if not swb.logged_in():
         swb.login()
-    players = ['profiles/76561197965527747']
-    playerNames = {'profiles/76561197965527747': '1'}
-    # players, playerNames = get_concurrent_players(swb)
+    players, playerNames = get_concurrent_players(swb)
 
     for player in players:
-        print('\n\tPlayer %s:' %playerNames[player])
+        print('\n\tPlayer %s:' % playerNames[player])
 
         profile_info = get_profile_info(swb, player)
-        count = profile_info['Vac Ban']['Count']
-        ord = str(count)+' times'
-        if count == 1:
-            ord = 'once'
-        elif count == 2:
-            ord = 'twice'
         if 'Vac Ban' in profile_info:
+            count = profile_info['Vac Ban']['Count']
+            ord = str(count)+' times'
+            if count == 1:
+                ord = 'once'
+            elif count == 2:
+                ord = 'twice'
             print('VAC Banned {ord}: {time} ago'.format(
             ord = ord,
             time = format_time(profile_info['Vac Ban']['Days']*24)))
-        if 'Private' in profile_info:
+        if profile_info['Private']
             print('Has a private profile.')
             continue
 
