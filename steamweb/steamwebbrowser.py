@@ -127,7 +127,7 @@ class SteamWebBrowser(object):
     @property
     def logger(self):
         if not getattr(self, '_logger', False):
-            name = '.'.join((__name__, self.__class__.__name__))
+            name = str(__name__)+'.'+str(self.__class__.__name__)
             self._logger = logging.getLogger(name)
         return self._logger
 
@@ -149,8 +149,9 @@ class SteamWebBrowser(object):
                 confighome = os.path.join(os.environ['HOME'], '.config')
             # Store it for later reference and create it if it does not exist
             self._appdata_path = os.path.join(confighome, self.name)
-            for p in [p for p in (confighome, self._appdata_path) if not os.path.isdir(p)]:
-                os.mkdir(p, stat.S_IRWXU)
+            for p in (confighome, self._appdata_path):
+                if not os.path.isdir(p):
+                    os.mkdir(p, stat.S_IRWXU)
         self.logger.info('Appdata path: "%s"', self._appdata_path)
         return self._appdata_path
 
@@ -218,14 +219,14 @@ class SteamWebBrowser(object):
         ''' Steam strips non-ascii characters before sending across the web.
         '''
         return self.re_nonascii.sub('', instr).encode('ascii')
-    
+
     def _make_fs_safe(self, instr):
         ''' Returns a very conservative filesystem-safe name for instr.
         It avoids most non-word or digit values as is max. 27 characters long
         '''
         instr = self.re_fs_safe.sub('', instr)
         return instr[:27] # 27 + '.lwp' = 31, considered maximum
-    
+
     @staticmethod
     def _get_donotcachetime():
         return int(round(time.time() * 1000))
@@ -371,9 +372,9 @@ class SteamWebBrowser(object):
         self.session.cookies.set_cookie(c)
         self._save_cookies()
 
-    def login(self, captchagid='-1', captcha_text='', emailauth='', emailsteamid='', 
+    def login(self, captchagid='-1', captcha_text='', emailauth='', emailsteamid='',
                 loginfriendlyname='', twofactorcode=''): # pylint:disable=too-many-arguments
-        self.logger.info('login calles with: captchagid="%s", captcha_text="%s", emailauth="%s",'
+        self.logger.info('login called with: captchagid="%s", captcha_text="%s", emailauth="%s",'
                         ' emailsteamid="%s", loginfriendlyname="%s", twofactorcode="%s"',
                         captchagid, captcha_text, emailauth, emailsteamid, loginfriendlyname,
                         twofactorcode,
@@ -401,6 +402,7 @@ class SteamWebBrowser(object):
         req = self.post(url, data=values)
         self.logger.debug('login response: "%s"', req.text)
         data = req.json()
+        print(data)
         self.logger.debug('JSON login response: "%s"', data)
         if data.get('message'):
             self.logger.warning(data.get('message'))
