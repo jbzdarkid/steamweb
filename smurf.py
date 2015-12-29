@@ -118,7 +118,7 @@ if __name__ == "__main__":
             print('VAC Banned {ord}: {time} ago'.format(
             ord = ord,
             time = format_time(profile_info['Vac Ban']['Days']*24)))
-        if profile_info['Private']
+        if profile_info['Private']:
             print('Has a private profile.')
             continue
 
