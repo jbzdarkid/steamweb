@@ -104,22 +104,23 @@ if __name__ == "__main__":
         swb.login()
     players, playerNames = get_concurrent_players(swb)
 
+    playerData = []
+
     for player in players:
-        print('\n\tPlayer %s:' % playerNames[player])
+        playerData.append({'Name': playerNames[player], 'Strikes' = 0.0})
 
         profile_info = get_profile_info(swb, player)
         if 'Vac Ban' in profile_info:
-            count = profile_info['Vac Ban']['Count']
-            ord = str(count)+' times'
-            if count == 1:
-                ord = 'once'
-            elif count == 2:
-                ord = 'twice'
-            print('VAC Banned {ord}: {time} ago'.format(
-            ord = ord,
-            time = format_time(profile_info['Vac Ban']['Days']*24)))
+            playerData[-1]['Vac Bans'] = int(profile_info['Vac Ban']['Count'])
+            playerData[-1]['Vac Age'] = profile_info['Vac Ban']['Days'] * 24
+            strikes -= playerData[-1]['Vac Age'] / 8760.0 # 1 year old
+        else:
+            playerData[-1]['Vac Bans'] = 0
+        playerData['Strikes'] += playerData[-1]['Vac Bans']
+
         if profile_info['Private']:
-            print('Has a private profile.')
+            playerData[-1]['Private'] = True
+            playerData['Strikes'] += 2
             continue
 
         badges = get_badges(swb, player)
@@ -131,18 +132,46 @@ if __name__ == "__main__":
             date = badges['Years of Service']['date']
             # 50 xp per year of service. The icons are unique as well, but hashed.
             date = date.replace(year=date.year - xp/50)
-        else:
+        else: # Use the oldest badge
             for badge in badges:
                 if badges[badge]['date'] < date:
                     date = badges[badge]['date']
         date = today-date
-        print('Account age:', format_time(date.days * 24 + date.seconds / 3600.0))
+        playerData[-1]['Account Age'] = date.days * 24 + date.seconds / 3600.0
+
+        playerData['Strikes'] += 1 - (playerData[-1]['Account Age'] / 8760.0) # 1 year old
 
         total_hours = 0.0
         for game in games:
             if 'hours_forever' in game:
                 total_hours += float(game['hours_forever'].replace(',', ''))
-        print('Total time in games:', format_time(total_hours))
+        playerData[-1]['Total Game Time'] = total_hours
+        playerData['Strikes'] += 1 - (total_hours / 720.0) # 1 month total playtime
 
+        if 'Friends' in profile_info:
+            playerData['Friends'] = profile_info['Friends']
+        else:
+            playerData['Friends'] = 0
+        playerData['Strikes'] += 1 - (playerData['Friends'] / 50.0)
+
+        playerData['Steam Level'] = profile_info['Steam Level']
+        playerData['Strikes'] += 1 - (playerData['Steam Level'] / 3.0)
+
+        playerData['Games'] = profile_info['Games']
+        playerData['Strikes'] += 1 - (playerData['Games'] / 10.0)
+
+    playerData.sort(key=lambda s: s['Strikes'])
+
+    for player in playerData:
+        print('\n\tPlayer: %s' % player['Name'])
+        print('Strikes: %f' % player['Strikes'])
+        print('Vac Bans: %d' % player['Vac Bans'])
+        if player['Vac Bans'] > 0:
+            print('Last ban on record: %s' % format_time(player['Vac Age']))
+        if player['Private']:
+            print('Has a private profile.')
+            continue
+        for key in ['Account Age', 'Total Game Time']:
+            print('%s: %s' % (key, format_time(player[key])))
         for key in ['Friends', 'Games', 'Steam Level']:
-            print('%s:%s%s' % (key, ' '*(13-len(key)), profile_info[key]))
+            print('%s: %s' % (key, player[key]))
