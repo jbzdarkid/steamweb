@@ -107,7 +107,7 @@ if __name__ == "__main__":
     playerData = []
 
     for player in players:
-        playerData.append({'Name': playerNames[player], 'Strikes' = 0.0})
+        playerData.append({'Name': playerNames[player], 'Strikes': 0.0})
 
         profile_info = get_profile_info(swb, player)
         if 'Vac Ban' in profile_info:
@@ -116,11 +116,11 @@ if __name__ == "__main__":
             strikes -= playerData[-1]['Vac Age'] / 8760.0 # 1 year old
         else:
             playerData[-1]['Vac Bans'] = 0
-        playerData['Strikes'] += playerData[-1]['Vac Bans']
+        playerData[-1]['Strikes'] += playerData[-1]['Vac Bans']
 
         if profile_info['Private']:
             playerData[-1]['Private'] = True
-            playerData['Strikes'] += 2
+            playerData[-1]['Strikes'] += 1
             continue
 
         badges = get_badges(swb, player)
@@ -139,39 +139,48 @@ if __name__ == "__main__":
         date = today-date
         playerData[-1]['Account Age'] = date.days * 24 + date.seconds / 3600.0
 
-        playerData['Strikes'] += 1 - (playerData[-1]['Account Age'] / 8760.0) # 1 year old
+        playerData[-1]['Strikes'] += 1 - (playerData[-1]['Account Age'] / 8760.0) # 1 year old
 
         total_hours = 0.0
         for game in games:
             if 'hours_forever' in game:
                 total_hours += float(game['hours_forever'].replace(',', ''))
         playerData[-1]['Total Game Time'] = total_hours
-        playerData['Strikes'] += 1 - (total_hours / 720.0) # 1 month total playtime
+        playerData[-1]['Strikes'] += 1 - (total_hours / 720.0) # 1 month total playtime
 
         if 'Friends' in profile_info:
-            playerData['Friends'] = profile_info['Friends']
+            playerData[-1]['Friends'] = profile_info['Friends']
         else:
-            playerData['Friends'] = 0
-        playerData['Strikes'] += 1 - (playerData['Friends'] / 50.0)
+            playerData[-1]['Friends'] = 0
+        playerData[-1]['Strikes'] += 1 - (playerData[-1]['Friends'] / 50.0)
 
-        playerData['Steam Level'] = profile_info['Steam Level']
-        playerData['Strikes'] += 1 - (playerData['Steam Level'] / 3.0)
+        playerData[-1]['Steam Level'] = profile_info['Steam Level']
+        playerData[-1]['Strikes'] += 1 - (playerData[-1]['Steam Level'] / 3.0)
 
-        playerData['Games'] = profile_info['Games']
-        playerData['Strikes'] += 1 - (playerData['Games'] / 10.0)
+        playerData[-1]['Games'] = profile_info['Games']
+        playerData[-1]['Strikes'] += 1 - (playerData[-1]['Games'] / 10.0)
 
+    playerData.append({'Strikes': -0.01, 'SIGNAL':'\tThese players are probably smurfs:'})
+    playerData.append({'Strikes': 1.001, 'SIGNAL':'\tThese players are definitely smurfs:'})
     playerData.sort(key=lambda s: s['Strikes'])
 
+    print('\tThese players are probably not smurfs:')
     for player in playerData:
+        if 'SIGNAL' in player:
+            print(player['SIGNAL'])
+            continue
+        print(player['Name'])
+        '''
         print('\n\tPlayer: %s' % player['Name'])
         print('Strikes: %f' % player['Strikes'])
         print('Vac Bans: %d' % player['Vac Bans'])
         if player['Vac Bans'] > 0:
             print('Last ban on record: %s' % format_time(player['Vac Age']))
-        if player['Private']:
+        if 'Private' in player:
             print('Has a private profile.')
             continue
         for key in ['Account Age', 'Total Game Time']:
             print('%s: %s' % (key, format_time(player[key])))
         for key in ['Friends', 'Games', 'Steam Level']:
             print('%s: %s' % (key, player[key]))
+        '''
