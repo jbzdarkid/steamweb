@@ -54,14 +54,15 @@ if __name__ == "__main__":
                 j += 1
         i += 1
 
+    out = 'say "Groups in this game:"'
     if len(groups) == len(players):
-        print('No groups in this game.')
+        out += 'say "All players solo-queueing."'
     else:
-        print('Groups in this game:')
         for group in groups:
             if len(group) == 1:
                 continue
-            out = 'Group of size '+str(len(group))+': '
+            out += '; wait 60;say "Group of size '+str(len(group))+': '
             for player in group:
-                out += '"'+HTMLParser().unescape(playerNames[player]).decode('utf-8')+'", '
-            print(out[:-2])
+                out += HTMLParser().unescape(playerNames[player]).decode('utf-8')+', '
+            out = out[:-2] + '"'
+    print(out)
