@@ -8,7 +8,7 @@ from sys import version_info
 from teamstacks import get_concurrent_players
 
 FORMAT1 = '%b %d, %Y @ %I:%M%p' #May 18, 2013 @ 12:32pm
-FORMAT2 = '%b %d @ %I:%M%p' #May 18 @ 12:32pm
+FORMAT2 = '%Y %b %d @ %I:%M%p' #May 18 @ 12:32pm
 today = datetime.today()
 
 if version_info.major >= 3:
@@ -33,7 +33,7 @@ def get_player_achievements(swb, game, player):
         try:
             achtime = datetime.strptime(achtime, FORMAT1)
         except ValueError:
-            achtime = datetime.strptime(achtime, FORMAT2).replace(year=today.year)
+            achtime = datetime.strptime(str(today.year) + ' ' + achtime, FORMAT2)
         achievements[m.group(2)] = {'date': achtime, 'desc': m.group(3)}
     return achievements
 
@@ -72,7 +72,7 @@ def get_badges(swb, player):
         try:
             date = datetime.strptime(date, FORMAT1)
         except ValueError:
-            date = datetime.strptime(date, FORMAT2).replace(year=today.year)
+            date = datetime.strptime(str(today.year) + ' ' + date, FORMAT2)
         badges[name]['date'] = date
     return badges
 
@@ -113,7 +113,7 @@ if __name__ == "__main__":
         if 'Vac Ban' in profile_info:
             playerData[-1]['Vac Bans'] = int(profile_info['Vac Ban']['Count'])
             playerData[-1]['Vac Age'] = profile_info['Vac Ban']['Days'] * 24
-            strikes -= playerData[-1]['Vac Age'] / 8760.0 # 1 year old
+            playerData[-1]['Strikes'] -= playerData[-1]['Vac Age'] / 8760.0 # 1 year
         else:
             playerData[-1]['Vac Bans'] = 0
         playerData[-1]['Strikes'] += playerData[-1]['Vac Bans']
@@ -139,7 +139,7 @@ if __name__ == "__main__":
         date = today-date
         playerData[-1]['Account Age'] = date.days * 24 + date.seconds / 3600.0
 
-        playerData[-1]['Strikes'] += 1 - (playerData[-1]['Account Age'] / 8760.0) # 1 year old
+        playerData[-1]['Strikes'] += 1 - (playerData[-1]['Account Age'] / 17520.0) # 2 years oldold
 
         total_hours = 0.0
         for game in games:
@@ -158,7 +158,7 @@ if __name__ == "__main__":
         playerData[-1]['Strikes'] += 1 - (playerData[-1]['Steam Level'] / 3.0)
 
         playerData[-1]['Games'] = profile_info['Games']
-        playerData[-1]['Strikes'] += 1 - (playerData[-1]['Games'] / 10.0)
+        playerData[-1]['Strikes'] += 1 - (playerData[-1]['Games'] / 30.0)
 
     playerData.append({'Strikes': -0.01, 'SIGNAL':'\tThese players are probably smurfs:'})
     playerData.append({'Strikes': 1.001, 'SIGNAL':'\tThese players are definitely smurfs:'})
